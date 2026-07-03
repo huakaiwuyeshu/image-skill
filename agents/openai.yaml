@@ -1,0 +1,4 @@
+interface:
+  display_name: "Image 2 Workflow"
+  short_description: "Optimize prompts then generate with GPT Image 2"
+  default_prompt: "Generate an image from my rough request using GPT Image 2."
