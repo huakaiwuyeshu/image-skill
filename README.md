@@ -7,10 +7,12 @@ Codex skill for GPT Image 2 image generation and image editing. It optimizes rou
 Install this skill from the repository subdirectory:
 
 ```bash
-python <codex-skill-installer>/install-skill-from-github.py --url https://github.com/huakaiwuyeshu/image-skill/tree/main/image-2-workflow
+python <codex-skill-installer>/install-skill-from-github.py --url https://github.com/huakaiwuyeshu/image-skill/tree/main/image-2-workflow --method git
 ```
 
 Then restart Codex so it can discover the new skill.
+
+If installing through a Codex UI that accepts a GitHub URL, use the subdirectory URL above, not the repository root URL.
 
 ## Requirements
 
