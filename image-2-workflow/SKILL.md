@@ -1,6 +1,6 @@
 ---
 name: image-2-workflow
-description: "Use this skill for all image generation or image editing tasks: generate an image, draw a prototype, make a design mockup, turn a PRD or HTML prototype into editable prototype images, make an interaction/visual direction more exciting, create posters, edit existing images, UI/prototype/design-image generation, Chinese poster/design images, reference-image editing, language-described region edits, multi-area local edits, or any GPT Image 2/image-2 request. Always optimize the user's rough instruction into a production-ready prompt first, then generate using the local API-backed gpt-image CLI with model gpt-image-2. For PRD-only prototype work, infer product structure and design direction before prompting. For existing images, support user-marked regions, semantic region selection, and HTML prototype slicing before edit. Do not use host-native image generation unless explicitly requested."
+description: "Use this skill for all image generation or image editing tasks: generate an image, draw a prototype, make a design mockup, turn a PRD, HTML prototype, or large prototype canvas image into editable prototype images, make an interaction/visual direction more exciting, create posters, edit existing images, UI/prototype/design-image generation, Chinese poster/design images, reference-image editing, language-described region edits, multi-area local edits, or any GPT Image 2/image-2 request. Always optimize the user's rough instruction into a production-ready prompt first, then generate using the local API-backed gpt-image CLI with model gpt-image-2. For existing prototypes, support marked regions, semantic region selection, HTML slicing, and Axure/Figma/MasterGo-style canvas PNG slicing before edit. Do not use host-native image generation unless explicitly requested."
 ---
 
 # Image 2 Workflow
@@ -9,7 +9,7 @@ Default to this skill for image work. It combines prompt improvement with the in
 
 ## Workflow
 
-1. Classify the task as text-to-image, HTML prototype slicing, reference edit, inpaint/local edit, multi-reference edit, or free redesign.
+1. Classify the task as text-to-image, HTML prototype slicing, image canvas slicing, reference edit, inpaint/local edit, multi-reference edit, or free redesign.
 2. Improve the user's rough instruction into a concise production prompt before generating.
 3. Use local API-backed generation only:
    - Preferred wrapper: `scripts/run_gpt_image.py`
@@ -94,6 +94,20 @@ When the HTML contains many static images, choose among three strategies:
 - Full-page capture: save the entire rendered page when no reliable screen container exists.
 
 Read `references/prompt-patterns.md` when writing prompts for HTML-derived edits.
+
+### 4. Large Prototype Canvas Image To Image Edit
+
+Use when the user provides a large exported image from Axure, Figma, MasterGo, Sketch, screenshots pasted into one canvas, or a full prototype board PNG/JPEG that contains many screens, sticky notes, annotations, tables, or overlay examples.
+
+Process:
+
+1. Inspect the canvas preview first. Determine whether the useful edit targets are phone/app screens, desktop screens, modules, image assets, or the full board.
+2. Slice with `scripts/slice_image_prototype.py`. For mobile prototype boards, prefer `--mode phone`; for mixed diagrams or non-phone modules, use `--mode module`; use `--mode full` only when the whole board is the target.
+3. Save an overview image with numbered boxes and a `slices.json` manifest. Use the overview to verify that sticky notes, requirement text, and unrelated tables were not mistaken for app screens.
+4. Select the target slice from the user's wording or the manifest. If the user says "the third screen", "the product-list screen", "the popup", or "the bottom-left page", map that description to the nearest numbered slice.
+5. Run the existing image edit flow on the selected PNG: semantic region selection, mask creation, optimized prompt saving, then `scripts/run_gpt_image.py`.
+
+For Axure-style boards with many phone screens, default to phone screen slicing. If a detected phone screen is fused with a nearby sticky note or annotation, trim to the standard phone width and avoid including the note.
 
 ## Edit Mode Decision
 
@@ -233,6 +247,14 @@ python "<skill-dir>/scripts/slice_html_prototype.py" --html "prototype/index.htm
 
 Use `--selector ".screen"` or `--selector "[data-screen]"` when the prototype has known screen containers. Use `--mode img` only when the user specifically wants embedded image assets rather than full UI screens.
 
+Slice a large Axure/Figma/MasterGo-style prototype canvas image:
+
+```bash
+python "<skill-dir>/scripts/slice_image_prototype.py" --image "prototype-board.png" --output-dir "outputs/gpt-image/image-slices/<name>" --mode phone --prefix "screen"
+```
+
+Use the generated overview PNG before editing to confirm the numbered slices. Use `--mode module` when the board is not a mobile-screen board or when the target is a non-screen module/table/card.
+
 The wrapper calls `gpt_image_cli.cli` directly when installed. If that import is unavailable, it delegates to `gpt-image` on PATH.
 
 ## Prompt File Safety
@@ -253,6 +275,7 @@ Before spending API quota:
 - Confirm `OPENAI_BASE_URL` is set when using a gateway.
 - For edits, verify all `--image` and `--mask` paths exist.
 - For HTML slicing, verify the HTML path or URL is reachable and Playwright/Chromium is available. If not available, install or use an existing browser screenshot tool before proceeding.
+- For canvas image slicing, verify the source image exists and inspect the generated overview before choosing a slice for editing.
 - For expensive or ambiguous requests, ask at most one concise question. For clear "generate now" requests, proceed.
 
 ## Failure Handling
