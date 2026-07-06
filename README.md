@@ -20,5 +20,6 @@ If installing through a Codex UI that accepts a GitHub URL, use the subdirectory
 - Set `OPENAI_API_KEY` in the local environment.
 - Set `OPENAI_BASE_URL` only when using a compatible custom gateway.
 - Install a compatible `gpt-image` CLI backend, such as `gpt-image-cli`, so `scripts/run_gpt_image.py` can call it.
+- For HTML prototype slicing, install Playwright and Chromium: `pip install playwright` and `python -m playwright install chromium`.
 
 No API key or gateway URL is stored in this repository.

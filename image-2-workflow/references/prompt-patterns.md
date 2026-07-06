@@ -26,6 +26,10 @@ Create a still-image prototype that communicates an interaction for [product/dom
 
 Using the provided prototype image as the visual reference, create an updated version that preserves the original screen structure, design language, color palette, typography feel, spacing rhythm, navigation, and unchanged modules. Modify only [requested feature/module/change]. Add/update the UI copy as follows: [copy]. If the user did not request a new visual style, keep the original style. Maintain realistic Chinese interface text and a coherent product prototype screenshot.
 
+## HTML Prototype Slice Edit
+
+Using this PNG slice rendered from an HTML prototype as the visual reference, preserve the original HTML prototype style, layout density, typography feel, component hierarchy, spacing rhythm, colors, and unchanged modules. Slice source: [manifest index / selector / visible text]. Modify only [requested region or feature]. If a mask is provided, edit only the masked area and preserve every unmasked region exactly. Keep the result looking like the same rendered prototype screen, with realistic Chinese interface text and no unrelated changes.
+
 ## Faithful Local Edit
 
 Edit only the masked area of the provided image. Preserve every unmasked region exactly: layout, colors, typography feel, spacing, screenshot proportions, icons, text, cards, and background. In the masked area, [requested change]. Match the original UI/product style and make the new element look native to the existing design. Do not change any unrelated content.

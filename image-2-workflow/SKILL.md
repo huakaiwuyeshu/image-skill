@@ -1,6 +1,6 @@
 ---
 name: image-2-workflow
-description: "Use this skill for all image generation or image editing tasks: generate an image, draw a prototype, make a design mockup, turn a PRD into a prototype, make an interaction/visual direction more exciting, create posters, edit existing images, UI/prototype/design-image generation, Chinese poster/design images, reference-image editing, language-described region edits, multi-area local edits, or any GPT Image 2/image-2 request. Always optimize the user's rough instruction into a production-ready prompt first, then generate using the local API-backed gpt-image CLI with model gpt-image-2. For PRD-only prototype work, infer product structure and design direction before prompting. For existing images, support both user-marked regions and semantic region selection from natural-language descriptions. Do not use host-native image generation unless explicitly requested."
+description: "Use this skill for all image generation or image editing tasks: generate an image, draw a prototype, make a design mockup, turn a PRD or HTML prototype into editable prototype images, make an interaction/visual direction more exciting, create posters, edit existing images, UI/prototype/design-image generation, Chinese poster/design images, reference-image editing, language-described region edits, multi-area local edits, or any GPT Image 2/image-2 request. Always optimize the user's rough instruction into a production-ready prompt first, then generate using the local API-backed gpt-image CLI with model gpt-image-2. For PRD-only prototype work, infer product structure and design direction before prompting. For existing images, support user-marked regions, semantic region selection, and HTML prototype slicing before edit. Do not use host-native image generation unless explicitly requested."
 ---
 
 # Image 2 Workflow
@@ -9,7 +9,7 @@ Default to this skill for image work. It combines prompt improvement with the in
 
 ## Workflow
 
-1. Classify the task as text-to-image, reference edit, inpaint/local edit, multi-reference edit, or free redesign.
+1. Classify the task as text-to-image, HTML prototype slicing, reference edit, inpaint/local edit, multi-reference edit, or free redesign.
 2. Improve the user's rough instruction into a concise production prompt before generating.
 3. Use local API-backed generation only:
    - Preferred wrapper: `scripts/run_gpt_image.py`
@@ -73,6 +73,27 @@ This analysis is required before generation:
 - Use reference-image edit mode with `--image` whenever a usable source image is provided. Use text-to-image only if the user explicitly wants a fresh redraw rather than a reference-based iteration.
 
 The final prompt should mention the reference image and include preservation rules, for example: preserve the original visual language, layout density, typography feel, color system, device framing, and unchanged modules; update only the requested feature area.
+
+### 3. HTML Prototype To Image Edit
+
+Use when the user provides an HTML prototype, local HTML file, URL, exported web prototype, or a folder with HTML plus static assets and wants visual edits through the image workflow.
+
+Process:
+
+1. Render the HTML in a browser-equivalent environment before editing. Do not edit blindly from source code unless the user asks to change the HTML itself.
+2. Slice the prototype into PNG assets with `scripts/slice_html_prototype.py`. Prefer screen/artboard/page-level slices over tiny image-only slices because downstream image editing needs full UI context.
+3. Create a manifest so each slice has a stable path, source selector, visible text, bounds, and index.
+4. Select the relevant slice from the user's description, manifest, and visual inspection. If unclear, ask one concise question or show the slice list.
+5. Run the existing image edit flow on the selected PNG: semantic region selection, mask creation if needed, optimized prompt saving, then `scripts/run_gpt_image.py`.
+6. If the user needs the HTML updated with the edited image, replace or add the saved PNG as a static asset only after confirming that is desired. The default deliverable is the edited PNG.
+
+When the HTML contains many static images, choose among three strategies:
+
+- Screen slicing: save each visible screen/card/page as one PNG. Use this for prototype iteration.
+- Image-element slicing: save each large `<img>` as one PNG. Use this when the user asks to edit embedded artwork or banners.
+- Full-page capture: save the entire rendered page when no reliable screen container exists.
+
+Read `references/prompt-patterns.md` when writing prompts for HTML-derived edits.
 
 ## Edit Mode Decision
 
@@ -204,6 +225,14 @@ python "<skill-dir>/scripts/make_mask.py" --image "input.png" --output "mask.png
 
 Mask semantics: opaque white means preserve; transparent means regenerate/edit.
 
+Slice an HTML prototype into editable PNG assets:
+
+```bash
+python "<skill-dir>/scripts/slice_html_prototype.py" --html "prototype/index.html" --output-dir "outputs/gpt-image/html-slices/<name>" --mode auto --viewport 1440x1200
+```
+
+Use `--selector ".screen"` or `--selector "[data-screen]"` when the prototype has known screen containers. Use `--mode img` only when the user specifically wants embedded image assets rather than full UI screens.
+
 The wrapper calls `gpt_image_cli.cli` directly when installed. If that import is unavailable, it delegates to `gpt-image` on PATH.
 
 ## Prompt File Safety
@@ -223,6 +252,7 @@ Before spending API quota:
 - Confirm `OPENAI_API_KEY` is present without printing it.
 - Confirm `OPENAI_BASE_URL` is set when using a gateway.
 - For edits, verify all `--image` and `--mask` paths exist.
+- For HTML slicing, verify the HTML path or URL is reachable and Playwright/Chromium is available. If not available, install or use an existing browser screenshot tool before proceeding.
 - For expensive or ambiguous requests, ask at most one concise question. For clear "generate now" requests, proceed.
 
 ## Failure Handling
