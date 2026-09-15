@@ -1,9 +1,9 @@
 ---
 name: image-2-workflow
-description: "Use this skill for all image generation or image editing tasks: generate an image, draw a prototype, make a design mockup, turn a PRD, HTML prototype, or large prototype canvas image into editable prototype images, make an interaction/visual direction more exciting, create posters, edit existing images, UI/prototype/design-image generation, Chinese poster/design images, reference-image editing, language-described region edits, multi-area local edits, or any GPT Image 2/image-2 request. Always optimize the user's rough instruction into a production-ready prompt first, then generate using the local API-backed gpt-image CLI with model gpt-image-2. For existing prototypes, support marked regions, semantic region selection, HTML slicing, and Axure/Figma/MasterGo-style canvas PNG slicing before edit. Do not use host-native image generation unless explicitly requested."
+description: "Use this skill for all image generation or image editing tasks: generate an image, draw a prototype, make a design mockup, turn a PRD, HTML prototype, or large prototype canvas image into editable prototype images, make an interaction/visual direction more exciting, create posters, edit existing images, UI/prototype/design-image generation, Chinese poster/design images, reference-image editing, language-described region edits, multi-area local edits, or any GPT Image 2.5/image-2.5 request. Always optimize the user's rough instruction into a production-ready prompt first, then generate using the local API-backed gpt-image CLI with model gpt-image-2.5-sunburst. For existing prototypes, support marked regions, semantic region selection, HTML slicing, and Axure/Figma/MasterGo-style canvas PNG slicing before edit. Do not use host-native image generation unless explicitly requested."
 ---
 
-# Image 2 Workflow
+# Image 2.5 Workflow
 
 Default to this skill for image work. It combines prompt improvement with the installed `wuyoscar/GPT-Image2-Skill` CLI backend.
 
@@ -14,7 +14,7 @@ Default to this skill for image work. It combines prompt improvement with the in
 3. Use local API-backed generation only:
    - Preferred wrapper: `scripts/run_gpt_image.py`
    - Backend: installed `gpt-image-cli`
-   - Model: `gpt-image-2`
+   - Model: `gpt-image-2.5-sunburst`
    - Environment: `OPENAI_API_KEY` and `OPENAI_BASE_URL`
 4. Save the optimized prompt to an explicit per-image prompt file before generation. Use a matching basename, for example `outputs/gpt-image/prompts/<short-name>-<timestamp>.prompt.md` and `outputs/gpt-image/<short-name>-<timestamp>.png`.
 5. Save outputs to a user-specified path when given. Otherwise use a sensible workspace path such as `outputs/gpt-image/<short-name>-<timestamp>.png`.
@@ -196,7 +196,7 @@ Keep the final prompt direct. Do not explain the prompt inside the prompt. For U
 
 ## Generation Defaults
 
-- Model: `gpt-image-2`.
+- Model: `gpt-image-2.5-sunburst`.
 - Quality: `high` for final posters, Chinese text, UI, diagrams, or detailed design images; `medium` for exploration; `low` only for cheap tests.
 - Size:
   - `landscape` for horizontal posters, web hero images, dashboards, and desktop prototypes.

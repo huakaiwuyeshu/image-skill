@@ -12,7 +12,7 @@ from pathlib import Path
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate or edit images with gpt-image-2.")
+    parser = argparse.ArgumentParser(description="Generate or edit images with gpt-image-2.5-sunburst.")
     prompt_group = parser.add_mutually_exclusive_group(required=True)
     prompt_group.add_argument("-p", "--prompt", help="Final optimized prompt.")
     prompt_group.add_argument("--prompt-file", help="Explicit path to the final optimized prompt file.")
@@ -20,7 +20,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-f", "--output", "--file", dest="output", required=True, help="Output image path.")
     parser.add_argument("-i", "--image", action="append", default=[], help="Reference image path. Repeatable.")
     parser.add_argument("-m", "--mask", help="Mask image path for inpainting.")
-    parser.add_argument("--model", default="gpt-image-2", help="Image model. Defaults to gpt-image-2.")
+    parser.add_argument("--model", default="gpt-image-2.5-sunburst", help="Image model. Defaults to gpt-image-2.5-sunburst.")
     parser.add_argument("--size", default="landscape", help="Size shortcut or literal size.")
     parser.add_argument("--quality", default="high", choices=["auto", "low", "medium", "high"])
     parser.add_argument("--format", default="png", choices=["png", "jpeg", "webp"])

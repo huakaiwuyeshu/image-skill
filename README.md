@@ -1,6 +1,6 @@
-# Image 2 Workflow Skill
+# Image 2.5 Workflow Skill
 
-Codex skill for GPT Image 2 image generation and image editing. It optimizes rough user requests into production prompts, saves prompts explicitly, and calls a local API-backed `gpt-image` CLI backend with model `gpt-image-2`.
+Codex skill for GPT Image 2.5 image generation and image editing. It optimizes rough user requests into production prompts, saves prompts explicitly, and calls a local API-backed `gpt-image` CLI backend with model `gpt-image-2.5-sunburst` by default.
 
 ## Install
 
@@ -16,7 +16,7 @@ If installing through a Codex UI that accepts a GitHub URL, use the subdirectory
 
 ## Requirements
 
-- The user's own `OPENAI_API_KEY` must have access to `gpt-image-2`.
+- The user's own `OPENAI_API_KEY` must have access to `gpt-image-2.5-sunburst` (or another explicitly selected 2.5 model).
 - Set `OPENAI_API_KEY` in the local environment.
 - Set `OPENAI_BASE_URL` only when using a compatible custom gateway.
 - Install a compatible `gpt-image` CLI backend, such as `gpt-image-cli`, so `scripts/run_gpt_image.py` can call it.
