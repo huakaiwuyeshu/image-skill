@@ -15,7 +15,8 @@ Default to this skill for image work. It combines prompt improvement with the in
    - Preferred wrapper: `scripts/run_gpt_image.py`
    - Backend: installed `gpt-image-cli`
    - Model: `gpt-image-2.5-sunburst`
-   - Environment: `OPENAI_API_KEY` and `OPENAI_BASE_URL`
+   - Credentials: `~/.codex/config.toml` `[model_providers.custom]` `base_url` and `experimental_bearer_token`. The wrapper loads these into `OPENAI_BASE_URL` and `OPENAI_API_KEY`. Do not point image calls at `http://127.0.0.1:4319`. Credentials always come from `config.toml` when it has both values; inherited `OPENAI_*` env vars are overridden.
+   - Proxy: the wrapper removes bracketed IPv6 entries (e.g. `[::1]`) from `NO_PROXY`/`no_proxy` because httpx2 cannot parse them. It does not unset the system proxy. Do not add a manual `NO_PROXY=` prefix. Use `python3`; this machine has no `python`.
 4. Save the optimized prompt to an explicit per-image prompt file before generation. Use a matching basename, for example `outputs/gpt-image/prompts/<short-name>-<timestamp>.prompt.md` and `outputs/gpt-image/<short-name>-<timestamp>.png`.
 5. Save outputs to a user-specified path when given. Otherwise use a sensible workspace path such as `outputs/gpt-image/<short-name>-<timestamp>.png`.
 6. Report the final image path, prompt path, model, size, quality, and whether the request used text-to-image or edit mode.
@@ -122,8 +123,28 @@ Required behavior:
 - Preserve all unmodified regions as much as possible.
 - Preserve the original visual style, color palette, typography feel, spacing, proportions, and screenshot layout unless the user explicitly asks otherwise.
 - Use a mask whenever the target region is identifiable, whether the user marked it visually or described it in words. Create the mask with `scripts/make_mask.py` or another exact mask source.
-- Keep the mask tight enough to prevent unrelated regions from changing, but large enough to fit the new content cleanly.
+- Keep the mask tight to the intended container, but large enough to fit the new content cleanly. For text replacement, cover the entire text container and leave a little margin around it so the new text has room.
 - The optimized prompt must include explicit preservation rules: "Edit only the masked area" and "Preserve the rest of the screenshot exactly."
+
+### Faithful Local Edit Check Rule
+
+- Do not resize, pad, or crop the source or mask, and do not paste protected pixels back by hand. For any masked edit the wrapper fits the work copy to every API size limit, maps the mask with it, restores the exact source size, and (unless `--no-composite` is set) hard-composites protected pixels from the original.
+- After each generation, run `scripts/verify_edit.py` once. Review its comparison images and the reported outside-mask difference count; do not write temporary pixel-analysis scripts or repeatedly crop and inspect the result.
+- The 3-generation cap in "Generation Budget" applies.
+- For final production artwork/posters, require exact text, 0 outside-mask differences, and clean containment.
+- For **PRD mockups / internal UI review screenshots** (forms, admin tables, red-box callouts, field additions/renames), use **Fast PRD Acceptance**: accept immediately once all requested fields/labels are present, readable, correctly placed, and free of major overlap or gibberish. Do NOT reject or iterate over minor font-weight differences, 2-6px alignment shifts, or cosmetic imperfections.
+
+### Fast PRD / Screenshot Mockup Mode (Anti-Over-Iteration)
+
+When the request is a PRD illustration, admin backend screenshot edit, form field addition, or red-box callout mockup:
+
+- Aim to finish in **1 generation + 1 full-image check** (target **<= 6 tool calls per image**, hard cap **1 retry** only if a requested field is missing, garbled, or heavily overlapping).
+- Prefer calling `scripts/run_gpt_image.py` directly (with 1 mask if local) rather than hand-coding multi-step PIL UI renderers.
+- If a lightweight PIL script is truly needed (e.g. dense Chinese admin table or exact red callout boxes), write and run **one** clean script, then inspect the **single full output image** once and stop if readable. On macOS, directly use `/System/Library/Fonts/PingFang.ttc` or `/System/Library/Fonts/STHeiti Medium.ttc` — NEVER run `fc-list` or `find /System/Library/Fonts`.
+- **Strictly forbidden** unless explicitly asked by the user:
+  - Multi-step pixel probing (`numpy` connected-component scans, color histograms, `cv2` inpainting tests, or coordinate-hunting loops).
+  - Slicing multiple zoomed crop PNGs and calling `view_image` on each crop one by one.
+  - Iterating on minor padding, border thickness, or few-pixel shifts once the screenshot clearly communicates the requirement.
 
 This is the default for commands like "add a tag here", "modify this button", "replace this block", "add something inside the red box", or "keep all other areas unchanged".
 
@@ -204,45 +225,58 @@ Keep the final prompt direct. Do not explain the prompt inside the prompt. For U
   - `square` or `1k` for simple tests and social images.
   - `2k` or `4k` only when the user needs higher resolution.
 - Format: `png` unless the user asks otherwise.
+- Background: the backend sometimes returns a transparent background. Image viewers often show transparency as white, which hides the problem, but on dark backgrounds the text turns unreadable. The wrapper flattens transparent pixels onto white by default; pass `--keep-alpha` only when the user wants a transparent PNG (icons, stickers, cut-outs).
 
 ## Wrapper Usage
 
 Use the bundled wrapper to avoid shell quoting issues with long Chinese prompts:
 
 ```bash
-python "<skill-dir>/scripts/run_gpt_image.py" --prompt "..." --save-prompt "outputs/gpt-image/prompts/result.prompt.md" --output "outputs/gpt-image/result.png" --size landscape --quality high
+python3 "<skill-dir>/scripts/run_gpt_image.py" --prompt "..." --save-prompt "outputs/gpt-image/prompts/result.prompt.md" --output "outputs/gpt-image/result.png" --size landscape --quality high
 ```
 
 For long prompts, first write the optimized prompt to an explicit file, then call the wrapper with that exact path:
 
 ```bash
-python "<skill-dir>/scripts/run_gpt_image.py" --prompt-file "outputs/gpt-image/prompts/result.prompt.md" --output "outputs/gpt-image/result.png" --size landscape --quality high
+python3 "<skill-dir>/scripts/run_gpt_image.py" --prompt-file "outputs/gpt-image/prompts/result.prompt.md" --output "outputs/gpt-image/result.png" --size landscape --quality high
 ```
 
 Reference edit:
 
 ```bash
-python "<skill-dir>/scripts/run_gpt_image.py" --prompt-file "outputs/gpt-image/prompts/edit.prompt.md" --output "outputs/gpt-image/edit.png" --image "input.png" --size landscape --quality high
+python3 "<skill-dir>/scripts/run_gpt_image.py" --prompt-file "outputs/gpt-image/prompts/edit.prompt.md" --output "outputs/gpt-image/edit.png" --image "input.png" --size landscape --quality high
 ```
 
 Inpaint with mask:
 
 ```bash
-python "<skill-dir>/scripts/run_gpt_image.py" --prompt "..." --output "outputs/gpt-image/inpaint.png" --image "input.png" --mask "mask.png" --size landscape --quality high
+python3 "<skill-dir>/scripts/run_gpt_image.py" --prompt "..." --output "outputs/gpt-image/inpaint.png" --image "input.png" --mask "mask.png" --quality high
 ```
+
+Masked edits (`--image` + `--mask`, mask the same size as the first image): the API only accepts 16px multiples, edges <= 3840px, aspect ratio <= 3:1, and 655,360-8,294,400 pixels. The wrapper fits the work copy automatically: lossless bottom/right padding when that is enough, proportional scaling only for sources that are too small (e.g. phone slices) or too large, extra padding for ratios above 3:1. It restores the exact source size and hard-composites opaque-white (preserve) areas from the original, so protected pixels never change. `--size` is ignored. `--no-composite` keeps the generated pixels everywhere; use it only for a deliberate redraw.
+
+Maskless reference edits (`--image` without `--mask`) and text-to-image pass `--size` through unchanged, so a reference can produce a differently sized result.
 
 Create a rectangular mask for faithful local edits:
 
 ```bash
-python "<skill-dir>/scripts/make_mask.py" --image "input.png" --output "mask.png" --rect x,y,w,h
+python3 "<skill-dir>/scripts/make_mask.py" --image "input.png" --output "mask.png" --rect x,y,w,h
 ```
 
 Mask semantics: opaque white means preserve; transparent means regenerate/edit.
 
+Check a local edit once after each generation (no API call):
+
+```bash
+python3 "<skill-dir>/scripts/verify_edit.py" --original "input.png" --edited "outputs/gpt-image/edit.png" --mask "mask.png" --out-dir "outputs/gpt-image/verify/edit"
+```
+
+It writes one before/after comparison image per editable region and prints the outside-mask difference count, which should be 0.
+
 Slice an HTML prototype into editable PNG assets:
 
 ```bash
-python "<skill-dir>/scripts/slice_html_prototype.py" --html "prototype/index.html" --output-dir "outputs/gpt-image/html-slices/<name>" --mode auto --viewport 1440x1200
+python3 "<skill-dir>/scripts/slice_html_prototype.py" --html "prototype/index.html" --output-dir "outputs/gpt-image/html-slices/<name>" --mode auto --viewport 1440x1200
 ```
 
 Use `--selector ".screen"` or `--selector "[data-screen]"` when the prototype has known screen containers. Use `--mode img` only when the user specifically wants embedded image assets rather than full UI screens.
@@ -250,7 +284,7 @@ Use `--selector ".screen"` or `--selector "[data-screen]"` when the prototype ha
 Slice a large Axure/Figma/MasterGo-style prototype canvas image:
 
 ```bash
-python "<skill-dir>/scripts/slice_image_prototype.py" --image "prototype-board.png" --output-dir "outputs/gpt-image/image-slices/<name>" --mode phone --prefix "screen"
+python3 "<skill-dir>/scripts/slice_image_prototype.py" --image "prototype-board.png" --output-dir "outputs/gpt-image/image-slices/<name>" --mode phone --prefix "screen"
 ```
 
 Use the generated overview PNG before editing to confirm the numbered slices. Use `--mode module` when the board is not a mobile-screen board or when the target is a non-screen module/table/card.
@@ -271,15 +305,24 @@ Prompt saving must be explicit and deterministic:
 
 Before spending API quota:
 
-- Confirm `OPENAI_API_KEY` is present without printing it.
-- Confirm `OPENAI_BASE_URL` is set when using a gateway.
+- Confirm the wrapper can read `~/.codex/config.toml` `[model_providers.custom]` without printing the token. `~/.codex/.env` is only a mirror of that provider.
+- Do not send image requests to `127.0.0.1:4319`. That gateway has no `/images/edits` route.
 - For edits, verify all `--image` and `--mask` paths exist.
 - For HTML slicing, verify the HTML path or URL is reachable and Playwright/Chromium is available. If not available, install or use an existing browser screenshot tool before proceeding.
 - For canvas image slicing, verify the source image exists and inspect the generated overview before choosing a slice for editing.
 - For expensive or ambiguous requests, ask at most one concise question. For clear "generate now" requests, proceed.
 
+## Generation Budget & Speed Guardrails
+
+- **PRD mockups / internal UI screenshots**: default to **1 generation** (hard cap **2** only for missing/garbled/blocking defects). One full-image look is enough — ship as soon as the requirement is clearly communicated.
+- **High-stakes final visuals/posters**: at most 3 generations per task. Check each result once (for local edits, one `verify_edit.py` run; otherwise one look at the full image).
+- **Hard anti-loop rule**: keep each single-image edit within **<= 6 tool calls** end-to-end. Do NOT spend turns running font-discovery commands, `numpy` pixel analysis, or viewing multiple zoomed crops. Every extra reasoning turn adds substantial wall-clock latency.
+- If the cap is reached, stop immediately, deliver the best version, and briefly note any remaining minor imperfection.
+- When the user specifies an explicit output path outside `outputs/`, put any temporary masks/scripts in `/tmp/` so the workspace stays clean.
+
 ## Failure Handling
 
 - Authentication errors mean the key or gateway is wrong; report the status and do not retry repeatedly.
 - Argument parsing errors usually mean the prompt was passed through the shell incorrectly; use `scripts/run_gpt_image.py`.
+- Size limits for masked edits are handled by the wrapper. If preparation still fails, report the `[edit]` log line; do not resize the source or mask by hand. For maskless edits, pick a valid `--size` shortcut or literal size.
 - Long-running high-quality generations can take several minutes. If the tool times out, check whether the target file appeared before retrying.
